@@ -1,0 +1,13 @@
+# Python stuff
+__pycache__/
+*.py[cod]
+
+# Logs
+logs/
+
+# Env & Config (Protect Secrets!)
+.env
+config.json
+
+# Scripts
+*.bat

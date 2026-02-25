@@ -1,0 +1,16 @@
+{
+    "tasks":[
+        {
+            "name": "Example Documents Backup",
+            "source": "C:\\Users\\Username\\Documents",
+            "destination": "\\\\NAS\\share\\Backups\\Documents",
+            "threads": 8
+        },
+        {
+            "name": "Example Photo Backup",
+            "source": "C:\\Users\\Username\\Pictures",
+            "destination": "D:\\LocalBackups\\Pictures",
+            "threads": 16
+        }
+    ]
+}
