@@ -8,6 +8,7 @@ import io
 import traceback
 import re
 import json
+import shutil
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -92,7 +93,7 @@ def parse_robocopy_log(log_path):
             raw_data = f.read()
         
         content = ""
-        for encoding in ['utf-16', 'utf-8', 'cp1252']:
+        for encoding in['utf-16', 'utf-8', 'cp1252']:
             try:
                 content = raw_data.decode(encoding)
                 if "ROBOCOPY" in content:
@@ -209,9 +210,12 @@ def run_sync():
         src = task['source']
         dest = task['destination']
         threads = task.get('threads', 8)
+        
+        # Determine Mode
+        mode = task.get('mode', 'direct').lower()
         log_file = os.path.join(LOG_DIR, f"{name.replace(' ', '_')}.log")
         
-        logger.info(f"--- Task {i}/{len(SYNC_TASKS)}: Starting [{name}] ---")
+        logger.info(f"--- Task {i}/{len(SYNC_TASKS)}: Starting[{name}] (Mode: {mode}) ---")
         
         if not os.path.exists(src):
             logger.error(f"Task Failed: Source path does not exist: {src}")
@@ -220,6 +224,47 @@ def run_sync():
                 "stats": {"total":0, "copied":0, "failed":1}
             })
             continue
+
+        # --- HISTORY MODE ---
+        if mode in ['history', 'versions']:
+            days_to_keep = task.get('days', 7)
+            base_dest = dest
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            
+            # Change destination to point inside today's folder
+            dest = os.path.join(base_dest, today_str)
+            logger.info(f"Task [{name}]: Target adjusted to {dest}. Keeping {days_to_keep} days.")
+            
+            # Ensure base destination exists so we can scan/delete old folders
+            if not os.path.exists(base_dest):
+                try:
+                    os.makedirs(base_dest, exist_ok=True)
+                except Exception as e:
+                    logger.error(f"Could not create base destination {base_dest}: {e}")
+            
+            if os.path.exists(base_dest):
+                try:
+                    existing_backups =[]
+                    # Find folders matching YYYY-MM-DD
+                    for folder in os.listdir(base_dest):
+                        folder_path = os.path.join(base_dest, folder)
+                        if os.path.isdir(folder_path) and re.match(r"^\d{4}-\d{2}-\d{2}$", folder):
+                            existing_backups.append(folder)
+                    
+                    existing_backups.sort() # Oldest dates will be first
+                    
+                    # If today's backup isn't in the list, we need to account for it being created
+                    target_count = days_to_keep if today_str in existing_backups else days_to_keep - 1
+                    
+                    # Delete oldest backups until we hit our limit
+                    while len(existing_backups) > target_count and target_count >= 0:
+                        oldest = existing_backups.pop(0)
+                        oldest_path = os.path.join(base_dest, oldest)
+                        logger.info(f"Task[{name}]: Deleting expired backup -> {oldest}")
+                        shutil.rmtree(oldest_path)
+                        
+                except Exception as e:
+                    logger.error(f"Task [{name}]: Failed during history cleanup: {e}")
 
         start_time = time.time()
         

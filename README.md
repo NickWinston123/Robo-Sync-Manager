@@ -37,18 +37,33 @@ pip install -r requirements.txt
 Copy `config.json.example` to `config.json`. Define your source paths, destination paths, and thread counts. 
 *(Note: Remember to double-escape backslashes in JSON).*
 
+You can run tasks in standard mirror mode or rolling snapshot mode:
+
 ```json
 {
-    "tasks":[
+    "tasks": [
         {
-            "name": "Main Documents",
+            "name": "Main Documents (Mirror)",
             "source": "C:\\Users\\Username\\Documents",
             "destination": "\\\\NAS\\share\\Backups\\Documents",
-            "threads": 8
+            "threads": 8,
+            "mode": "direct"
+        },
+        {
+            "name": "Project Files (7-Day History)",
+            "source": "C:\\Work\\Projects",
+            "destination": "\\\\NAS\\share\\Backups\\Projects_History",
+            "threads": 8,
+            "mode": "history",
+            "days": 7
         }
     ]
 }
 ```
+
+**Task Parameters:**
+*   `mode`: Use `"direct"` (Default) to exactly mirror and overwrite the destination folder. Use `"history"` to automatically create a new `YYYY-MM-DD` folder inside the destination every day.
+*   `days`: *(Only used if mode is "history")*. The number of daily backups to keep before the script automatically deletes the oldest ones.
 
 **4. Configure Discord Webhook (Optional):**
 If you want Discord notifications, copy `.env.example` to `.env` and add your webhook URL:
